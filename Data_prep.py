@@ -5,10 +5,14 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'modules'))
 import streamlit as st
 import pandas as pd
 import numpy as np
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 from modules.data_loader import load_data
-from modules.preprocessing import summary_statistics, iqr_outlier_removal, handle_missing_values
-from modules.visualization import histogram, boxplot
+from modules.preprocessing import summary_statistics, handle_missing_values
+from modules.visualization import histogram, boxplot, lineplot
 from modules.export_utils import download_csv, export_data_pdf, export_fig_to_pdf
 
 # ------------------------
@@ -54,64 +58,98 @@ df_cleaned = df_cleaned.drop_duplicates()
 st.write(f"Number of rows after removing duplicates: {df_cleaned.shape[0]}")
 
 # ------------------------
-# Outlier Handling (IQR)
+# Log Transformation (As per .ipynb)
 # ------------------------
-st.subheader("3️⃣ Handling Outlier (IQR)")
-st.write("Removing outliers using the IQR (Interquartile Range) method.")
+st.subheader("3️⃣ Log Transformation")
+st.write("Applying log transformation to skewed columns.")
 
-selected_cols = st.multiselect("Select columns for IQR outlier removal:", df.select_dtypes(include="number").columns.tolist(), default=df.select_dtypes(include="number").columns.tolist())
+# Apply log transformation to selected columns (if they exist in the dataset)
+log_columns = ['Production', 'Land', 'Labor', 'N', 'P', 'K', 'Pesticides', 'fert']
+for col in log_columns:
+    if col in df_cleaned.columns:
+        df_cleaned[f'ln{col}'] = np.log(df_cleaned[col] + 1)  # Add 1 to avoid log(0)
 
-st.write("Before IQR outlier removal:")
-st.pyplot(histogram(df_cleaned, selected_cols[0], f"Histogram of {selected_cols[0]} Before Outlier Removal"))
-st.pyplot(boxplot(df_cleaned, selected_cols[0], f"Boxplot of {selected_cols[0]} Before Outlier Removal"))
-
-df_cleaned = iqr_outlier_removal(df_cleaned, selected_cols)
-
-st.write(f"Number of rows after IQR removal: {df_cleaned.shape[0]}")
-
-st.write("After IQR outlier removal:")
-st.pyplot(histogram(df_cleaned, selected_cols[0], f"Histogram of {selected_cols[0]} After Outlier Removal"))
-st.pyplot(boxplot(df_cleaned, selected_cols[0], f"Boxplot of {selected_cols[0]} After Outlier Removal"))
+# Show the transformed data
+st.write("Here's a preview of the log-transformed columns:")
+st.dataframe(df_cleaned[[f'ln{col}' for col in log_columns]].head())
 
 # ------------------------
-# Data Transformation
+# Outlier Checking with Boxplot and Lineplot (Before Removal)
 # ------------------------
-st.subheader("4️⃣ Data Transformation")
+st.subheader("4️⃣ Outlier Checking (Before Removal)")
 
-st.write("Creating a log-transformed feature for 'Production' to reduce skewness.")
-df_cleaned['Log_Production'] = np.log(df_cleaned['Production'] + 1)  
+selected_cols = st.multiselect("Select columns for outlier checking:", df.select_dtypes(include="number").columns.tolist(), default=df.select_dtypes(include="number").columns.tolist())
 
-st.write(f"Here's a preview of the data with the log-transformed 'Production' column:")
-st.dataframe(df_cleaned[['Production', 'Log_Production']].head())
+# Create grid for plots
+cols = st.columns(2)  # Create two columns for a grid layout
+
+# Boxplot for outlier detection
+for idx, col in enumerate(selected_cols):
+    with cols[idx % 2]:  # Alternate between columns
+        st.pyplot(boxplot(df_cleaned, col, f"Boxplot of {col} (Before Outlier Removal)"))
+
+# Lineplot to visualize trends
+for idx, col in enumerate(selected_cols):
+    with cols[(idx + len(selected_cols)) % 2]:  # Alternate between columns
+        st.pyplot(lineplot(df_cleaned, col, f"Line Plot of {col}"))
 
 # ------------------------
-# Feature Scaling
+# Outlier Detection using PCA (No IQR)
 # ------------------------
-st.subheader("5️⃣ Feature Scaling")
+st.subheader("5️⃣ Outlier Detection using PCA")
+st.write("Removing outliers using PCA and visualizing the results.")
 
-scaling_choice = st.selectbox("Select Scaling Method", ['None', 'Standardization', 'Min-Max'])
-if scaling_choice == 'Standardization':
-    from sklearn.preprocessing import StandardScaler
-    scaler = StandardScaler()
-    df_cleaned[df_cleaned.select_dtypes(include=["float64", "int64"]).columns] = scaler.fit_transform(df_cleaned.select_dtypes(include=["float64", "int64"]))
-elif scaling_choice == 'Min-Max':
-    from sklearn.preprocessing import MinMaxScaler
-    scaler = MinMaxScaler()
-    df_cleaned[df_cleaned.select_dtypes(include=["float64", "int64"]).columns] = scaler.fit_transform(df_cleaned.select_dtypes(include=["float64", "int64"]))
+# Standardize the data before applying PCA
+numeric_cols = df_cleaned.select_dtypes(include=['float64', 'int64']).columns.tolist()
+df_cleaned_pca = df_cleaned[numeric_cols].dropna()
+
+# Standardize the data
+scaler = StandardScaler()
+df_scaled = scaler.fit_transform(df_cleaned_pca)
+
+# Apply PCA to reduce dimensionality
+pca = PCA(n_components=2)  # Reduce to 2 components for visualization
+df_pca = pca.fit_transform(df_scaled)
+
+# Visualize the PCA output
+st.write("PCA Components:")
+st.write(pd.DataFrame(df_pca, columns=['PC1', 'PC2']).head())
+
+# Create a plot of the PCA components
+df_pca_df = pd.DataFrame(df_pca, columns=['PC1', 'PC2'])
+
+# Identify outliers based on PCA
+# We'll use the distance from the mean (a simple method for identifying outliers in PCA space)
+mean_pc1 = np.mean(df_pca_df['PC1'])
+mean_pc2 = np.mean(df_pca_df['PC2'])
+
+# Calculate the Euclidean distance from the mean for each point
+df_pca_df['Distance'] = np.sqrt((df_pca_df['PC1'] - mean_pc1)**2 + (df_pca_df['PC2'] - mean_pc2)**2)
+
+# Outliers are points with distance > 95th percentile
+threshold = np.percentile(df_pca_df['Distance'], 95)
+df_pca_df['Outlier'] = df_pca_df['Distance'] > threshold
+
+# Plot PCA with outliers highlighted
+plt.figure(figsize=(10, 6))
+sns.scatterplot(x='PC1', y='PC2', data=df_pca_df, hue='Outlier', palette='coolwarm', s=100)
+plt.title("PCA of Data with Outliers Highlighted")
+plt.tight_layout()
+st.pyplot(plt)
+
+# ------------------------
+# Visualizations (After Outlier Handling)
+# ------------------------
+st.subheader("6️⃣ Visualizing the Cleaned and Transformed Data (After Outlier Handling)")
+column_to_plot = st.selectbox("Select a column for histogram:", df_cleaned.select_dtypes(include="number").columns.tolist())
+st.pyplot(histogram(df_cleaned, column_to_plot, f"Histogram of {column_to_plot} (After Transformation)"))
 
 # ------------------------
 # Exploratory Data Analysis (EDA)
 # ------------------------
-st.subheader("6️⃣ EDA: Summary Statistics")
+st.subheader("7️⃣ EDA: Summary Statistics")
 st.write("Here's a summary of the data after cleaning and transformations:")
 st.dataframe(summary_statistics(df_cleaned))
-
-# ------------------------
-# Visualization (After Transformation)
-# ------------------------
-st.subheader("7️⃣ Visualizing the Cleaned and Transformed Data")
-column_to_plot = st.selectbox("Select a column for histogram:", df_cleaned.select_dtypes(include="number").columns.tolist())
-st.pyplot(histogram(df_cleaned, column_to_plot, f"Histogram of {column_to_plot} (After Transformation)"))
 
 # ------------------------
 # Export / Download
