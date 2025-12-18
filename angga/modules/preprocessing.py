@@ -26,3 +26,15 @@ def handle_missing_values(df, strategy='median'):
         raise ValueError("Strategy must be one of ['median', 'mean', 'mode']")
     
     return df
+
+
+from sklearn.model_selection import train_test_split
+
+def split_data(data_log):
+    features = data_log.drop(columns=['Production', 'Country', 'Year'])
+    target = data_log['Production']
+
+    return train_test_split(
+        features, target, test_size=0.2, random_state=42
+    )
+

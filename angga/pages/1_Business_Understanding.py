@@ -301,10 +301,58 @@ Skenario 1 dipilih sebagai skenario utama karena:
 - Cocok untuk penelitian akademik
 """)
 
+
+
 # =====================================================
-# 11. KESIMPULAN
+# 11. TINJAUAN PUSTAKA / REFERENSI JURNAL
 # =====================================================
-st.subheader("11. Kesimpulan Tahap Business Understanding")
+st.subheader("11. Tinjauan Pustaka (Referensi Jurnal)")
+
+st.markdown("""
+Penelitian ini mengacu pada literatur ilmiah
+yang membahas penggunaan **transformasi logaritmik**
+dan implikasinya dalam analisis data yang memiliki
+distribusi tidak normal dan keberadaan outlier.
+
+Salah satu referensi utama yang digunakan adalah:
+""")
+
+st.markdown("""
+**Feng, C., Wang, H., Lu, N., Chen, T., He, H., Lu, Y., & Tu, X. M. (2014)**  
+*Log-transformation and its implications for data analysis*  
+Shanghai Archives of Psychiatry, Vol. 26, No. 2  
+DOI: 10.3969/j.issn.1002-0829.2014.02.009
+""")
+
+st.markdown("""
+Jurnal tersebut menyoroti bahwa meskipun transformasi log
+sering digunakan untuk mengurangi skewness dan pengaruh outlier,
+pendekatan ini **tidak selalu menjamin distribusi data menjadi normal**
+dan dalam beberapa kasus justru dapat meningkatkan skewness
+atau menyulitkan interpretasi hasil model.
+
+Temuan ini menjadi dasar metodologis penting dalam penelitian ini,
+khususnya dalam:
+- Pemilihan transformasi log sebagai pendekatan awal
+- Kehati-hatian dalam interpretasi hasil regresi
+- Perbandingan dengan metode alternatif penanganan outlier
+  seperti metode robust statistics dan machine learning
+""")
+
+st.markdown("""
+Dengan merujuk pada literatur tersebut,
+penelitian ini tidak hanya mengikuti praktik umum,
+tetapi juga mempertimbangkan **keterbatasan teoretis**
+dari transformasi logaritmik dalam konteks analisis ekonomi pertanian.
+""")
+
+
+
+
+# =====================================================
+# 12. KESIMPULAN
+# =====================================================
+st.subheader("12. Kesimpulan Tahap Business Understanding")
 
 st.markdown("""
 Tahap Business Understanding telah berhasil:
@@ -321,3 +369,5 @@ st.info(
 
 st.divider()
 st.caption("Business Understanding | Proyek Data Science Akademik")
+
+

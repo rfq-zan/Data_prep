@@ -1,47 +1,4 @@
 import streamlit as st
-from pathlib import Path
-
-# =====================================================
-# PATH
-# =====================================================
-BASE_DIR = Path(__file__).resolve().parents[1]
-
-# =====================================================
-# SIDEBAR (KONSISTEN)
-# =====================================================
-with st.sidebar:
-    st.markdown("## 🌾 CRISP-DM Framework")
-    st.markdown("---")
-    st.markdown("### Tahapan Analisis")
-    st.markdown("""
-    - Business Understanding  
-    - Data Understanding  
-    - Data Preparation  
-    - Modeling  
-    - **Evaluation**  
-    """)
-    st.markdown("---")
-    st.caption("Proyek Akademik Data Science\nSkala Riset")
-
-# =====================================================
-# HEADER
-# =====================================================
-st.markdown("""
-# 📈 Evaluation  
-### Analisis Produksi Pertanian di Kawasan Asia
-""")
-
-st.markdown("""
-Tahap **Evaluation** bertujuan untuk mengevaluasi kinerja model,
-membandingkan seluruh skenario yang diuji,
-serta menentukan pendekatan terbaik
-berdasarkan kriteria statistik dan interpretasi ekonomi.
-""")
-
-st.divider()
-
-
-import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
