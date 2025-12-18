@@ -138,16 +138,33 @@ plt.tight_layout()
 st.pyplot(plt)
 
 # ------------------------
+# Correlation Heatmap
+# ------------------------
+st.subheader("6️⃣ Correlation Heatmap")
+st.write("Visualizing the correlation between features using a heatmap.")
+
+# Select only numeric columns for correlation calculation
+numeric_cols = df_cleaned.select_dtypes(include=['float64', 'int64']).columns.tolist()
+
+# Calculate correlation matrix for numeric columns only
+correlation_matrix = df_cleaned[numeric_cols].corr()
+
+# Plot the heatmap
+plt.figure(figsize=(12, 8))
+sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt=".2f", linewidths=0.5)
+st.pyplot(plt)
+
+# ------------------------
 # Visualizations (After Outlier Handling)
 # ------------------------
-st.subheader("6️⃣ Visualizing the Cleaned and Transformed Data (After Outlier Handling)")
+st.subheader("7️⃣ Visualizing the Cleaned and Transformed Data (After Outlier Handling)")
 column_to_plot = st.selectbox("Select a column for histogram:", df_cleaned.select_dtypes(include="number").columns.tolist())
 st.pyplot(histogram(df_cleaned, column_to_plot, f"Histogram of {column_to_plot} (After Transformation)"))
 
 # ------------------------
 # Exploratory Data Analysis (EDA)
 # ------------------------
-st.subheader("7️⃣ EDA: Summary Statistics")
+st.subheader("8️⃣ EDA: Summary Statistics")
 st.write("Here's a summary of the data after cleaning and transformations:")
 st.dataframe(summary_statistics(df_cleaned))
 
