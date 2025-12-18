@@ -62,14 +62,14 @@ h1, h2, h3 {
 # TITLE
 # =========================
 st.title("📊 Agricultural Production Analysis")
-st.caption("Modern EDA Dashboard • VS Code Dark High Contrast Theme")
+st.caption("Data Preparation")
 
 # =========================
 # LOAD DATA
 # =========================
 df = load_data()
 
-# 🔴 HAPUS COUNTRY_CODE SECARA GLOBAL (SATU KALI)
+# HAPUS KOLOM IDENTITAS (TERMASUK Country_Code)
 df_cleaned = df.drop(
     columns=['Country', 'Year', 'Country Code', 'Country_Code'],
     errors='ignore'
@@ -110,7 +110,6 @@ with st.container(border=True):
         st.info("No missing values found.")
 
     df_cleaned = handle_missing_values(df_cleaned, strategy='median')
-
     st.success("Missing values handled successfully.")
 
 # =========================
@@ -124,7 +123,7 @@ with st.container(border=True):
 
     c1, c2, c3 = st.columns(3)
     c1.metric("Rows (Before)", total_before)
-    c2.metric("Duplicates", dup_before)
+    c2.metric("Duplicates Found", dup_before)
     c3.metric("Duplicate Rate", f"{(dup_before/total_before*100):.2f}%")
 
     df_cleaned = df_cleaned.drop_duplicates()
@@ -137,7 +136,7 @@ with st.container(border=True):
     st.subheader("5️⃣ Outlier Checking (Before Log)")
 
     selected_cols = st.multiselect(
-        "Select columns:",
+        "Select numeric columns:",
         df_cleaned.select_dtypes(include='number').columns.tolist(),
         default=df_cleaned.select_dtypes(include='number').columns.tolist()
     )
@@ -145,13 +144,13 @@ with st.container(border=True):
     grid = st.columns(2)
     for i, col in enumerate(selected_cols):
         with grid[i % 2]:
-            st.pyplot(boxplot(df_cleaned, col, f"Boxplot of {col}"))
+            st.pyplot(boxplot(df_cleaned, col, f"Boxplot of {col} (Before Log)"))
 
 # =========================
 # 6️⃣ LOG TRANSFORMATION
 # =========================
 with st.container(border=True):
-    st.subheader("6️⃣ Log Transformation")
+    st.subheader("6️⃣ Log Transformation (np.log1p)")
 
     log_cols = ['Production', 'Land', 'Labor', 'N', 'P', 'K', 'Pesticides', 'fert']
     log_cols = [c for c in log_cols if c in df_cleaned.columns]
@@ -177,7 +176,7 @@ with st.container(border=True):
 # 8️⃣ PCA
 # =========================
 with st.container(border=True):
-    st.subheader("8️⃣ PCA")
+    st.subheader("8️⃣ PCA (Principal Component Analysis)")
 
     X_pca = df_log.select_dtypes(include='number').dropna()
 
@@ -195,9 +194,10 @@ with st.container(border=True):
 
     st.dataframe(pca_df)
 
-    fig, ax = plt.subplots()
-    ax.plot(var, marker='o')
-    ax.plot(cum, marker='x')
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.plot(range(1, len(var) + 1), var, marker='o', label='Explained Variance')
+    ax.plot(range(1, len(var) + 1), cum, marker='x', label='Cumulative Variance')
+    ax.legend()
     st.pyplot(fig)
 
 # =========================
@@ -206,44 +206,44 @@ with st.container(border=True):
 with st.container(border=True):
     st.subheader("9️⃣ Correlation Heatmap")
 
+    st.markdown("### 🔴 Before Log Transformation")
     fig1, ax1 = plt.subplots(figsize=(12, 7))
-    sns.heatmap(df_cleaned.select_dtypes(include='number').corr(), annot=True, fmt=".2f")
+    sns.heatmap(
+        df_cleaned.select_dtypes(include='number').corr(),
+        annot=True,
+        fmt=".2f",
+        cmap="coolwarm",
+        ax=ax1
+    )
     st.pyplot(fig1)
 
+    st.markdown("### 🟢 After Log Transformation")
     fig2, ax2 = plt.subplots(figsize=(12, 7))
-    sns.heatmap(df_log.select_dtypes(include='number').corr(), annot=True, fmt=".2f")
+    sns.heatmap(
+        df_log.select_dtypes(include='number').corr(),
+        annot=True,
+        fmt=".2f",
+        cmap="coolwarm",
+        ax=ax2
+    )
     st.pyplot(fig2)
 
 # =========================
-# 🔟 FINAL BOXPLOT
+# 1️⃣0️⃣ EDA
 # =========================
 with st.container(border=True):
-    st.subheader("🔟 Final Boxplot")
-
-    col = st.selectbox(
-        "Select column:",
-        df_log.select_dtypes(include='number').columns.tolist()
-    )
-
-    st.pyplot(boxplot(df_log, col, f"Boxplot of {col}"))
-
-# =========================
-# 1️⃣1️⃣ EDA
-# =========================
-with st.container(border=True):
-    st.subheader("1️⃣1️⃣ Summary Statistics")
+    st.subheader("1️⃣0️⃣ EDA: Summary Statistics (After Log)")
     st.dataframe(summary_statistics(df_log))
 
 # =========================
 # 📥 EXPORT
 # =========================
 with st.container(border=True):
-    st.subheader("📥 Export")
+    st.subheader("📥 Download / Export")
 
     download_csv(df_log)
 
     stats = summary_statistics(df_log)
     export_data_pdf(df_log, stats, filename="report_agriculture.pdf")
 
-    fig_hist = histogram(df_log, col, f"Histogram of {col}")
-    export_fig_to_pdf(fig_hist, filename=f"{col}_histogram.pdf")
+    
