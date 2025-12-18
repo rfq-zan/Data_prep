@@ -36,12 +36,28 @@ data = pd.read_csv(CSV_URL)
 # =========================
 st.header("1. Data Overview")
 st.caption(
-    "Bagian ini menampilkan gambaran awal dataset, termasuk contoh data "
-    "serta informasi jumlah baris dan kolom."
+    "Bagian ini menampilkan gambaran awal dataset melalui lima baris pertama "
+    "dan lima baris terakhir sebagai preview, serta menyediakan akses ke "
+    "seluruh data melalui fitur scroll."
 )
 
+# --- Preview 5 data pertama ---
+st.subheader("Preview Data (5 Baris Pertama)")
 st.dataframe(data.head(), use_container_width=True)
 
+# --- Preview 5 data terakhir ---
+st.subheader("Preview Data (5 Baris Terakhir)")
+st.dataframe(data.tail(), use_container_width=True)
+
+# --- Dataset lengkap dengan scroll ---
+st.subheader("Dataset Lengkap")
+st.dataframe(
+    data,
+    use_container_width=True,
+    height=350
+)
+
+# --- Ringkasan ukuran data ---
 col1, col2 = st.columns(2)
 with col1:
     st.metric("Jumlah Baris", data.shape[0])
@@ -50,46 +66,6 @@ with col2:
 
 st.divider()
 
-# -------------------------
-# STATISTIK DESKRIPTIF
-# -------------------------
-st.header("2. Statistik Deskriptif")
-
-st.write(
-    """
-    Bagian ini menyajikan ringkasan statistik dari seluruh variabel numerik
-    untuk memahami karakteristik, distribusi, dan variasi data sebelum
-    dilakukan analisis lanjutan.
-    """
-)
-
-desc = data.describe()
-st.dataframe(desc, use_container_width=True)
-
-st.divider()
-
-# -------------------------
-# PENJELASAN UMUM STATISTIK
-# -------------------------
-st.subheader("Penjelasan Umum Statistik")
-
-st.markdown(
-    """
-    **Statistik deskriptif** memberikan gambaran awal mengenai pola dan sebaran data.
-    Adapun arti dari masing-masing ukuran statistik adalah sebagai berikut:
-
-    - **count** : jumlah data valid (tidak bernilai kosong)
-    - **mean** : nilai rata-rata
-    - **std (standard deviation)** : tingkat penyebaran data terhadap nilai rata-rata
-    - **min** : nilai terkecil
-    - **25% (Q1)** : kuartil bawah
-    - **50% (median)** : nilai tengah
-    - **75% (Q3)** : kuartil atas
-    - **max** : nilai terbesar
-    """
-)
-
-st.divider()
 
 # -------------------------
 # INTERPRETASI PER KELOMPOK KOLOM
@@ -149,20 +125,45 @@ st.markdown(
 st.divider()
 
 # -------------------------
-# KESIMPULAN
+# STATISTIK DESKRIPTIF
 # -------------------------
-st.subheader("Kesimpulan Tahap Data Understanding")
+st.header("2. Statistik Deskriptif")
+
+st.write(
+    """
+    Bagian ini menyajikan ringkasan statistik dari seluruh variabel numerik
+    untuk memahami karakteristik, distribusi, dan variasi data sebelum
+    dilakukan analisis lanjutan.
+    """
+)
+
+desc = data.describe()
+st.dataframe(desc, use_container_width=True)
+
+st.divider()
+
+# -------------------------
+# PENJELASAN UMUM STATISTIK
+# -------------------------
+st.subheader("Penjelasan Umum Statistik")
 
 st.markdown(
     """
-    Berdasarkan hasil statistik deskriptif, dapat disimpulkan bahwa:
-    1. Dataset memiliki **variasi tinggi** pada variabel produksi dan input pertanian.
-    2. Terdapat indikasi kuat keberadaan **outlier**.
-    3. Distribusi data cenderung **tidak simetris**, sehingga transformasi logaritmik relevan.
-    4. Dataset telah memenuhi kebutuhan tahap **Data Understanding dalam CRISP-DM**
-       dan siap dilanjutkan ke tahap praproses dan pemodelan.
+    **Statistik deskriptif** memberikan gambaran awal mengenai pola dan sebaran data.
+    Adapun arti dari masing-masing ukuran statistik adalah sebagai berikut:
+
+    - **count** : jumlah data valid (tidak bernilai kosong)
+    - **mean** : nilai rata-rata
+    - **std (standard deviation)** : tingkat penyebaran data terhadap nilai rata-rata
+    - **min** : nilai terkecil
+    - **25% (Q1)** : kuartil bawah
+    - **50% (median)** : nilai tengah
+    - **75% (Q3)** : kuartil atas
+    - **max** : nilai terbesar
     """
 )
+
+st.divider()
 
 # =========================
 # 3. STRUKTUR DATA
@@ -269,7 +270,43 @@ ax.set_ylabel(trend_col)
 
 st.pyplot(fig)
 
+# -------------------------
+# DESKRIPSI INTERPRETASI TREN
+# -------------------------
+st.markdown(
+    """
+    **Interpretasi Umum Tren:**
+
+    Visualisasi tren menunjukkan bahwa nilai variabel yang diamati mengalami
+    fluktuasi yang cukup signifikan sepanjang urutan data.
+    Terlihat adanya beberapa lonjakan nilai yang tinggi pada titik-titik tertentu,
+    sementara sebagian besar observasi berada pada tingkat yang relatif lebih rendah.
+
+    Pola ini mengindikasikan adanya **ketimpangan antar observasi**, yang dapat
+    disebabkan oleh perbedaan karakteristik wilayah, waktu, atau intensitas input
+    pertanian. Keberadaan lonjakan ekstrem juga memperkuat indikasi adanya
+    **outlier**, sehingga analisis lanjutan dan transformasi data menjadi relevan
+    pada tahap selanjutnya.
+    """
+)
+
 st.divider()
+
+# -------------------------
+# KESIMPULAN
+# -------------------------
+st.subheader("Kesimpulan Tahap Data Understanding")
+
+st.markdown(
+    """
+    Berdasarkan hasil statistik deskriptif, dapat disimpulkan bahwa:
+    1. Dataset memiliki **variasi tinggi** pada variabel produksi dan input pertanian.
+    2. Terdapat indikasi kuat keberadaan **outlier**.
+    3. Distribusi data cenderung **tidak simetris**, sehingga transformasi logaritmik relevan.
+    4. Dataset telah memenuhi kebutuhan tahap **Data Understanding dalam CRISP-DM**
+       dan siap dilanjutkan ke tahap praproses dan pemodelan.
+    """
+)
 
 # -------------------------
 # FOOTER
