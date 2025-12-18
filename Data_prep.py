@@ -27,156 +27,199 @@ st.title("📊 Agricultural Production Analysis ")
 df = load_data()
 
 # ------------------------
+# Remove Unnecessary Columns (Country, Year, Country Code)
+# ------------------------
+df_cleaned = df.drop(columns=['Country', 'Year', 'Country Code'], errors='ignore')
+
+# ------------------------
 # DATA OVERVIEW
 # ------------------------
 st.subheader("1️⃣ Data Overview")
 st.write("Here's a preview of the raw data:")
-st.dataframe(df.head())
+st.dataframe(df_cleaned)
+
+# ------------------------
+# Line Plot for Data Overview (Before Further Processing)
+# ------------------------
+st.subheader("2️⃣ Line Plot Overview")
+st.write("Visualizing trends for numeric columns (grid view).")
+
+numeric_cols_for_lineplot = df_cleaned.select_dtypes(include=['float64', 'int64']).columns.tolist()
+
+num_cols = 3
+cols = st.columns(num_cols)
+for idx, col in enumerate(numeric_cols_for_lineplot):
+    with cols[idx % num_cols]:
+        st.pyplot(lineplot(df_cleaned, col, f"Line Plot of {col}"))
 
 # ------------------------
 # Data Cleaning
 # ------------------------
-st.subheader("2️⃣ Data Cleaning")
-st.write("Handling missing values by filling them with the median of each column.")
+st.subheader("3️⃣ Data Cleaning")
+st.write("Handling missing values by filling them with the median of each numeric column.")
 
-# Display missing values before cleaning
-missing_cols = df.columns[df.isnull().any()]
-st.write("Columns with missing values:", missing_cols)
+missing_per_col = df_cleaned.isnull().sum().sort_values(ascending=False)
+missing_per_col = missing_per_col[missing_per_col > 0]
 
-# Handle Missing Values (median strategy)
-df_cleaned = handle_missing_values(df, strategy='median')
+st.write("Missing values per column (before):")
+if len(missing_per_col) > 0:
+    st.dataframe(missing_per_col.rename("Missing Count"))
+else:
+    st.info("No missing values found.")
 
-# Show missing values after cleaning
-missing_cols_after = df_cleaned.columns[df_cleaned.isnull().any()]
-st.write("Columns with missing values after handling:", missing_cols_after)
+df_cleaned = handle_missing_values(df_cleaned, strategy='median')
+
+missing_per_col_after = df_cleaned.isnull().sum().sort_values(ascending=False)
+missing_per_col_after = missing_per_col_after[missing_per_col_after > 0]
+
+st.write("Missing values per column (after):")
+if len(missing_per_col_after) > 0:
+    st.dataframe(missing_per_col_after.rename("Missing Count"))
+else:
+    st.success("All missing values handled (no missing values remain).")
 
 # ------------------------
-# Remove Duplicates
+# Remove Duplicates (More visual)
 # ------------------------
-st.write("Removing duplicate rows from the data.")
-df_cleaned = df_cleaned.drop_duplicates()
-st.write(f"Number of rows after removing duplicates: {df_cleaned.shape[0]}")
+st.subheader("4️⃣ Duplicate Value Removal")
+
+dup_count_before = int(df_cleaned.duplicated().sum())
+total_before = int(df_cleaned.shape[0])
+
+c1, c2, c3 = st.columns(3)
+c1.metric("Rows (Before)", total_before)
+c2.metric("Duplicates Found", dup_count_before)
+c3.metric("Duplicate Rate", f"{(dup_count_before/total_before*100):.2f}%" if total_before else "0.00%")
+
+progress_bar = st.progress(0)
+with st.spinner("Removing duplicates..."):
+    df_cleaned = df_cleaned.drop_duplicates()
+    progress_bar.progress(100)
+
+total_after = int(df_cleaned.shape[0])
+st.success("Duplicate rows removed successfully.")
+st.metric("Rows (After)", total_after)
 
 # ------------------------
-# Log Transformation (As per .ipynb)
+# Outlier Checking (BEFORE log, using Boxplot only)
 # ------------------------
-st.subheader("3️⃣ Log Transformation")
-st.write("Applying log transformation to skewed columns.")
+st.subheader("5️⃣ Outlier Checking (Before Log)")
+st.write("Boxplot is used to visually check outliers BEFORE log transformation.")
 
-# Apply log transformation to selected columns (if they exist in the dataset)
+selected_cols = st.multiselect(
+    "Select columns for outlier checking:",
+    df_cleaned.select_dtypes(include="number").columns.tolist(),
+    default=df_cleaned.select_dtypes(include="number").columns.tolist()
+)
+
+grid = st.columns(2)
+for idx, col in enumerate(selected_cols):
+    with grid[idx % 2]:
+        st.pyplot(boxplot(df_cleaned, col, f"Boxplot of {col} (Before Log)"))
+
+# ------------------------
+# Log Transformation (AS IN .ipynb: np.log1p applied AFTER outlier checking)
+# ------------------------
+st.subheader("6️⃣ Log Transformation (np.log1p) — After Outlier Checking")
+st.write("Applying `np.log1p()` directly to the selected columns (no ln* columns are created).")
+
 log_columns = ['Production', 'Land', 'Labor', 'N', 'P', 'K', 'Pesticides', 'fert']
-for col in log_columns:
-    if col in df_cleaned.columns:
-        df_cleaned[f'ln{col}'] = np.log(df_cleaned[col] + 1)  # Add 1 to avoid log(0)
+log_columns = [c for c in log_columns if c in df_cleaned.columns]
 
-# Show the transformed data
-st.write("Here's a preview of the log-transformed columns:")
-st.dataframe(df_cleaned[[f'ln{col}' for col in log_columns]].head())
+df_log = df_cleaned.copy()
+df_log[log_columns] = np.log1p(df_log[log_columns])
 
-# ------------------------
-# Outlier Checking with Boxplot and Lineplot (Before Removal)
-# ------------------------
-st.subheader("4️⃣ Outlier Checking (Before Removal)")
+st.write("Preview of log-transformed columns:")
+st.dataframe(df_log[log_columns].head())
 
-selected_cols = st.multiselect("Select columns for outlier checking:", df.select_dtypes(include="number").columns.tolist(), default=df.select_dtypes(include="number").columns.tolist())
-
-# Create grid for plots
-cols = st.columns(2)  # Create two columns for a grid layout
-
-# Boxplot for outlier detection
+# Optional: show boxplot AFTER log (to prove outlier shrinkage visually)
+st.subheader("7️⃣ Outlier Checking (After Log)")
+grid2 = st.columns(2)
 for idx, col in enumerate(selected_cols):
-    with cols[idx % 2]:  # Alternate between columns
-        st.pyplot(boxplot(df_cleaned, col, f"Boxplot of {col} (Before Outlier Removal)"))
-
-# Lineplot to visualize trends
-for idx, col in enumerate(selected_cols):
-    with cols[(idx + len(selected_cols)) % 2]:  # Alternate between columns
-        st.pyplot(lineplot(df_cleaned, col, f"Line Plot of {col}"))
+    if col in df_log.columns:
+        with grid2[idx % 2]:
+            st.pyplot(boxplot(df_log, col, f"Boxplot of {col} (After Log)"))
 
 # ------------------------
-# Outlier Detection using PCA (No IQR)
+# PCA (FIXED to match your .ipynb logic: full PCA + explained variance table)
 # ------------------------
-st.subheader("5️⃣ Outlier Detection using PCA")
-st.write("Removing outliers using PCA and visualizing the results.")
+st.subheader("8️⃣ PCA (Principal Component Analysis) — Based on Log Data")
+st.write("PCA fitted on `data_log.drop(columns=['Production','Country','Year'])` style (robust drop).")
 
-# Standardize the data before applying PCA
-numeric_cols = df_cleaned.select_dtypes(include=['float64', 'int64']).columns.tolist()
-df_cleaned_pca = df_cleaned[numeric_cols].dropna()
+X_pca = df_log.drop(columns=['Production', 'Country', 'Year'], errors='ignore')
+X_pca = X_pca.select_dtypes(include='number').dropna()
 
-# Standardize the data
-scaler = StandardScaler()
-df_scaled = scaler.fit_transform(df_cleaned_pca)
+pca = PCA()
+pca.fit(X_pca)
 
-# Apply PCA to reduce dimensionality
-pca = PCA(n_components=2)  # Reduce to 2 components for visualization
-df_pca = pca.fit_transform(df_scaled)
+explained_var = pca.explained_variance_ratio_
+cum_var = np.cumsum(explained_var)
 
-# Visualize the PCA output
-st.write("PCA Components:")
-st.write(pd.DataFrame(df_pca, columns=['PC1', 'PC2']).head())
+pca_variance = pd.DataFrame({
+    'PC': [f'PC{i+1}' for i in range(len(explained_var))],
+    'Explained Variance': explained_var,
+    'Cumulative Variance': cum_var
+})
 
-# Create a plot of the PCA components
-df_pca_df = pd.DataFrame(df_pca, columns=['PC1', 'PC2'])
+st.write("PCA Explained Variance Table:")
+st.dataframe(pca_variance)
 
-# Identify outliers based on PCA
-# We'll use the distance from the mean (a simple method for identifying outliers in PCA space)
-mean_pc1 = np.mean(df_pca_df['PC1'])
-mean_pc2 = np.mean(df_pca_df['PC2'])
-
-# Calculate the Euclidean distance from the mean for each point
-df_pca_df['Distance'] = np.sqrt((df_pca_df['PC1'] - mean_pc1)**2 + (df_pca_df['PC2'] - mean_pc2)**2)
-
-# Outliers are points with distance > 95th percentile
-threshold = np.percentile(df_pca_df['Distance'], 95)
-df_pca_df['Outlier'] = df_pca_df['Distance'] > threshold
-
-# Plot PCA with outliers highlighted
-plt.figure(figsize=(10, 6))
-sns.scatterplot(x='PC1', y='PC2', data=df_pca_df, hue='Outlier', palette='coolwarm', s=100)
-plt.title("PCA of Data with Outliers Highlighted")
-plt.tight_layout()
-st.pyplot(plt)
+fig, ax = plt.subplots(figsize=(10, 5))
+ax.plot(range(1, len(explained_var) + 1), explained_var, marker='o', label='Explained Variance')
+ax.plot(range(1, len(explained_var) + 1), cum_var, marker='x', label='Cumulative Variance')
+ax.set_xlabel("Principal Component")
+ax.set_ylabel("Variance")
+ax.set_title("PCA Variance (Explained & Cumulative)")
+ax.legend()
+st.pyplot(fig)
 
 # ------------------------
-# Correlation Heatmap
+# Correlation Heatmap (Before vs After Log)
 # ------------------------
-st.subheader("6️⃣ Correlation Heatmap")
-st.write("Visualizing the correlation between features using a heatmap.")
+st.subheader("9️⃣ Correlation Heatmap (Before vs After Log)")
 
-# Select only numeric columns for correlation calculation
-numeric_cols = df_cleaned.select_dtypes(include=['float64', 'int64']).columns.tolist()
+st.write("Correlation BEFORE log (numeric only):")
+num_before = df_cleaned.select_dtypes(include='number')
+corr_before = num_before.corr()
 
-# Calculate correlation matrix for numeric columns only
-correlation_matrix = df_cleaned[numeric_cols].corr()
+fig1, ax1 = plt.subplots(figsize=(12, 7))
+sns.heatmap(corr_before, annot=True, fmt=".2f")
+ax1.set_title("Correlation Heatmap — Before Log")
+st.pyplot(fig1)
 
-# Plot the heatmap
-plt.figure(figsize=(12, 8))
-sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt=".2f", linewidths=0.5)
-st.pyplot(plt)
+st.write("Correlation AFTER log (numeric only):")
+num_after = df_log.select_dtypes(include='number')
+corr_after = num_after.corr()
+
+fig2, ax2 = plt.subplots(figsize=(12, 7))
+sns.heatmap(corr_after, annot=True, fmt=".2f")
+ax2.set_title("Correlation Heatmap — After Log")
+st.pyplot(fig2)
 
 # ------------------------
-# Visualizations (After Outlier Handling)
+# Visualizations (After Outlier Handling) -> boxplot only (as per your revision)
 # ------------------------
-st.subheader("7️⃣ Visualizing the Cleaned and Transformed Data (After Outlier Handling)")
-column_to_plot = st.selectbox("Select a column for histogram:", df_cleaned.select_dtypes(include="number").columns.tolist())
-st.pyplot(histogram(df_cleaned, column_to_plot, f"Histogram of {column_to_plot} (After Transformation)"))
+st.subheader("🔟 Final Boxplot (After Log)")
+column_to_plot = st.selectbox(
+    "Select a column for boxplot (after log):",
+    df_log.select_dtypes(include="number").columns.tolist()
+)
+st.pyplot(boxplot(df_log, column_to_plot, f"Boxplot of {column_to_plot} (After Log)"))
 
 # ------------------------
-# Exploratory Data Analysis (EDA)
+# EDA
 # ------------------------
-st.subheader("8️⃣ EDA: Summary Statistics")
-st.write("Here's a summary of the data after cleaning and transformations:")
-st.dataframe(summary_statistics(df_cleaned))
+st.subheader("1️⃣1️⃣ EDA: Summary Statistics (After Log)")
+st.dataframe(summary_statistics(df_log))
 
 # ------------------------
 # Export / Download
 # ------------------------
 st.subheader("📥 Download / Export")
+download_csv(df_log)
 
-download_csv(df_cleaned)
+stats_clean = summary_statistics(df_log)
+export_data_pdf(df_log, stats_clean, filename="report_agriculture.pdf")
 
-stats_clean = summary_statistics(df_cleaned)
-export_data_pdf(df_cleaned, stats_clean, filename="report_agriculture.pdf")
-
-fig_example = histogram(df_cleaned, column_to_plot, f"Histogram of {column_to_plot}")
+fig_example = histogram(df_log, column_to_plot, f"Histogram of {column_to_plot}")
 export_fig_to_pdf(fig_example, filename=f"{column_to_plot}_histogram.pdf")
