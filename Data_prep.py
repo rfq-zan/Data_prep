@@ -24,7 +24,7 @@ st.set_page_config(
 )
 
 # =========================
-# CSS — BLUE OUTLINE CONTAINER (VS CODE DARK)
+# CSS — BLUE OUTLINE CONTAINER
 # =========================
 st.markdown("""
 <style>
@@ -33,8 +33,6 @@ st.markdown("""
     color: #c9d1d9;
     font-family: 'Segoe UI', sans-serif;
 }
-
-/* Container styling */
 section[data-testid="stContainer"] {
     background-color: #161b22;
     border: 2px solid #58a6ff;
@@ -43,20 +41,14 @@ section[data-testid="stContainer"] {
     margin-bottom: 28px;
     box-shadow: 0 0 12px rgba(88,166,255,0.25);
 }
-
-/* Headings */
 h1, h2, h3 {
     color: #58a6ff;
     font-weight: 700;
 }
-
-/* Dataframe */
 [data-testid="stDataFrame"] {
     background-color: #0d1117;
     border-radius: 10px;
 }
-
-/* Metric */
 [data-testid="metric-container"] {
     background-color: #0d1117;
     border: 1px solid #30363d;
@@ -76,14 +68,18 @@ st.caption("Modern EDA Dashboard • VS Code Dark High Contrast Theme")
 # LOAD DATA
 # =========================
 df = load_data()
-df_cleaned = df.drop(columns=['Country', 'Year', 'Country Code'], errors='ignore')
+
+# 🔴 HAPUS COUNTRY_CODE SECARA GLOBAL (SATU KALI)
+df_cleaned = df.drop(
+    columns=['Country', 'Year', 'Country Code', 'Country_Code'],
+    errors='ignore'
+)
 
 # =========================
 # 1️⃣ DATA OVERVIEW
 # =========================
 with st.container(border=True):
     st.subheader("1️⃣ Data Overview")
-    st.write("Here's a preview of the raw data:")
     st.dataframe(df_cleaned, use_container_width=True)
 
 # =========================
@@ -91,13 +87,12 @@ with st.container(border=True):
 # =========================
 with st.container(border=True):
     st.subheader("2️⃣ Line Plot Overview")
-    st.write("Visualizing trends for numeric columns (grid view).")
 
-    numeric_cols_for_lineplot = df_cleaned.select_dtypes(include=['float64', 'int64']).columns.tolist()
+    numeric_cols = df_cleaned.select_dtypes(include=['int64', 'float64']).columns.tolist()
     cols = st.columns(3)
 
-    for idx, col in enumerate(numeric_cols_for_lineplot):
-        with cols[idx % 3]:
+    for i, col in enumerate(numeric_cols):
+        with cols[i % 3]:
             st.pyplot(lineplot(df_cleaned, col, f"Line Plot of {col}"))
 
 # =========================
@@ -105,27 +100,18 @@ with st.container(border=True):
 # =========================
 with st.container(border=True):
     st.subheader("3️⃣ Data Cleaning")
-    st.write("Handling missing values by filling them with the median of each numeric column.")
 
-    missing_per_col = df_cleaned.isnull().sum().sort_values(ascending=False)
-    missing_per_col = missing_per_col[missing_per_col > 0]
+    missing = df_cleaned.isnull().sum()
+    missing = missing[missing > 0]
 
-    st.write("Missing values per column (before):")
-    if len(missing_per_col) > 0:
-        st.dataframe(missing_per_col.rename("Missing Count"))
+    if len(missing) > 0:
+        st.dataframe(missing.rename("Missing Count"))
     else:
         st.info("No missing values found.")
 
     df_cleaned = handle_missing_values(df_cleaned, strategy='median')
 
-    missing_per_col_after = df_cleaned.isnull().sum()
-    missing_per_col_after = missing_per_col_after[missing_per_col_after > 0]
-
-    st.write("Missing values per column (after):")
-    if len(missing_per_col_after) > 0:
-        st.dataframe(missing_per_col_after.rename("Missing Count"))
-    else:
-        st.success("All missing values handled (no missing values remain).")
+    st.success("Missing values handled successfully.")
 
 # =========================
 # 4️⃣ DUPLICATE REMOVAL
@@ -133,101 +119,92 @@ with st.container(border=True):
 with st.container(border=True):
     st.subheader("4️⃣ Duplicate Value Removal")
 
-    dup_count_before = int(df_cleaned.duplicated().sum())
-    total_before = int(df_cleaned.shape[0])
+    dup_before = int(df_cleaned.duplicated().sum())
+    total_before = int(len(df_cleaned))
 
     c1, c2, c3 = st.columns(3)
     c1.metric("Rows (Before)", total_before)
-    c2.metric("Duplicates Found", dup_count_before)
-    c3.metric("Duplicate Rate", f"{(dup_count_before/total_before*100):.2f}%")
+    c2.metric("Duplicates", dup_before)
+    c3.metric("Duplicate Rate", f"{(dup_before/total_before*100):.2f}%")
 
-    progress_bar = st.progress(0)
-    with st.spinner("Removing duplicates..."):
-        df_cleaned = df_cleaned.drop_duplicates()
-        progress_bar.progress(100)
-
-    st.success("Duplicate rows removed successfully.")
-    st.metric("Rows (After)", int(df_cleaned.shape[0]))
+    df_cleaned = df_cleaned.drop_duplicates()
+    st.metric("Rows (After)", int(len(df_cleaned)))
 
 # =========================
 # 5️⃣ OUTLIER CHECK (BEFORE LOG)
 # =========================
 with st.container(border=True):
     st.subheader("5️⃣ Outlier Checking (Before Log)")
-    st.write("Boxplot is used to visually check outliers BEFORE log transformation.")
 
     selected_cols = st.multiselect(
-        "Select columns for outlier checking:",
-        df_cleaned.select_dtypes(include="number").columns.tolist(),
-        default=df_cleaned.select_dtypes(include="number").columns.tolist()
+        "Select columns:",
+        df_cleaned.select_dtypes(include='number').columns.tolist(),
+        default=df_cleaned.select_dtypes(include='number').columns.tolist()
     )
 
     grid = st.columns(2)
-    for idx, col in enumerate(selected_cols):
-        with grid[idx % 2]:
-            st.pyplot(boxplot(df_cleaned, col, f"Boxplot of {col} (Before Log)"))
+    for i, col in enumerate(selected_cols):
+        with grid[i % 2]:
+            st.pyplot(boxplot(df_cleaned, col, f"Boxplot of {col}"))
 
 # =========================
 # 6️⃣ LOG TRANSFORMATION
 # =========================
 with st.container(border=True):
-    st.subheader("6️⃣ Log Transformation (np.log1p) — After Outlier Checking")
+    st.subheader("6️⃣ Log Transformation")
 
-    log_columns = ['Production', 'Land', 'Labor', 'N', 'P', 'K', 'Pesticides', 'fert']
-    log_columns = [c for c in log_columns if c in df_cleaned.columns]
+    log_cols = ['Production', 'Land', 'Labor', 'N', 'P', 'K', 'Pesticides', 'fert']
+    log_cols = [c for c in log_cols if c in df_cleaned.columns]
 
     df_log = df_cleaned.copy()
-    df_log[log_columns] = np.log1p(df_log[log_columns])
+    df_log[log_cols] = np.log1p(df_log[log_cols])
 
-    st.write("Preview of log-transformed columns:")
-    st.dataframe(df_log[log_columns].head())
+    st.dataframe(df_log[log_cols].head())
 
 # =========================
 # 7️⃣ OUTLIER CHECK (AFTER LOG)
 # =========================
 with st.container(border=True):
     st.subheader("7️⃣ Outlier Checking (After Log)")
-    grid2 = st.columns(2)
 
-    for idx, col in enumerate(selected_cols):
+    grid = st.columns(2)
+    for i, col in enumerate(selected_cols):
         if col in df_log.columns:
-            with grid2[idx % 2]:
+            with grid[i % 2]:
                 st.pyplot(boxplot(df_log, col, f"Boxplot of {col} (After Log)"))
 
 # =========================
 # 8️⃣ PCA
 # =========================
 with st.container(border=True):
-    st.subheader("8️⃣ PCA (Principal Component Analysis) — Based on Log Data")
+    st.subheader("8️⃣ PCA")
 
-    X_pca = df_log.drop(columns=['Production', 'Country', 'Year'], errors='ignore')
-    X_pca = X_pca.select_dtypes(include='number').dropna()
+    X_pca = df_log.select_dtypes(include='number').dropna()
 
     pca = PCA()
     pca.fit(X_pca)
 
-    explained_var = pca.explained_variance_ratio_
-    cum_var = np.cumsum(explained_var)
+    var = pca.explained_variance_ratio_
+    cum = np.cumsum(var)
 
-    pca_variance = pd.DataFrame({
-        'PC': [f'PC{i+1}' for i in range(len(explained_var))],
-        'Explained Variance': explained_var,
-        'Cumulative Variance': cum_var
+    pca_df = pd.DataFrame({
+        'PC': [f'PC{i+1}' for i in range(len(var))],
+        'Explained Variance': var,
+        'Cumulative Variance': cum
     })
 
-    st.dataframe(pca_variance)
+    st.dataframe(pca_df)
 
-    fig, ax = plt.subplots(figsize=(10, 5))
-    ax.plot(range(1, len(explained_var) + 1), explained_var, marker='o', label='Explained')
-    ax.plot(range(1, len(explained_var) + 1), cum_var, marker='x', label='Cumulative')
-    ax.legend()
+    fig, ax = plt.subplots()
+    ax.plot(var, marker='o')
+    ax.plot(cum, marker='x')
     st.pyplot(fig)
 
 # =========================
 # 9️⃣ CORRELATION HEATMAP
 # =========================
 with st.container(border=True):
-    st.subheader("9️⃣ Correlation Heatmap (Before vs After Log)")
+    st.subheader("9️⃣ Correlation Heatmap")
 
     fig1, ax1 = plt.subplots(figsize=(12, 7))
     sns.heatmap(df_cleaned.select_dtypes(include='number').corr(), annot=True, fmt=".2f")
@@ -241,30 +218,32 @@ with st.container(border=True):
 # 🔟 FINAL BOXPLOT
 # =========================
 with st.container(border=True):
-    st.subheader("🔟 Final Boxplot (After Log)")
-    column_to_plot = st.selectbox(
-        "Select a column:",
-        df_log.select_dtypes(include="number").columns.tolist()
+    st.subheader("🔟 Final Boxplot")
+
+    col = st.selectbox(
+        "Select column:",
+        df_log.select_dtypes(include='number').columns.tolist()
     )
-    st.pyplot(boxplot(df_log, column_to_plot, f"Boxplot of {column_to_plot} (After Log)"))
+
+    st.pyplot(boxplot(df_log, col, f"Boxplot of {col}"))
 
 # =========================
 # 1️⃣1️⃣ EDA
 # =========================
 with st.container(border=True):
-    st.subheader("1️⃣1️⃣ EDA: Summary Statistics (After Log)")
+    st.subheader("1️⃣1️⃣ Summary Statistics")
     st.dataframe(summary_statistics(df_log))
 
 # =========================
 # 📥 EXPORT
 # =========================
 with st.container(border=True):
-    st.subheader("📥 Download / Export")
+    st.subheader("📥 Export")
 
     download_csv(df_log)
 
-    stats_clean = summary_statistics(df_log)
-    export_data_pdf(df_log, stats_clean, filename="report_agriculture.pdf")
+    stats = summary_statistics(df_log)
+    export_data_pdf(df_log, stats, filename="report_agriculture.pdf")
 
-    fig_example = histogram(df_log, column_to_plot, f"Histogram of {column_to_plot}")
-    export_fig_to_pdf(fig_example, filename=f"{column_to_plot}_histogram.pdf")
+    fig_hist = histogram(df_log, col, f"Histogram of {col}")
+    export_fig_to_pdf(fig_hist, filename=f"{col}_histogram.pdf")
