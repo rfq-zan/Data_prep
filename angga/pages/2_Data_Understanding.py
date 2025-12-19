@@ -103,6 +103,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+import streamlit as st
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
 # -------------------------
 # PAGE CONFIG
 # -------------------------
@@ -114,7 +120,7 @@ st.set_page_config(
 # -------------------------
 # TITLE
 # -------------------------
-st.title("📊Agricultural Production Analysis")
+st.title("Agricultural Production Analysis")
 st.subheader("Data Understanding")
 
 st.caption(
@@ -135,18 +141,11 @@ data = pd.read_csv(CSV_URL)
 # =========================
 st.header("1. Data Overview")
 st.caption(
-    "Bagian ini menampilkan gambaran awal dataset melalui lima baris pertama "
-    "dan lima baris terakhir sebagai preview, serta menyediakan akses ke "
-    "seluruh data melalui fitur scroll."
+    "Bagian ini menampilkan keseluruhan dataset secara lengkap untuk memberikan "
+    "gambaran menyeluruh mengenai isi, struktur, dan konsistensi data. "
+    "Tabel disajikan dalam bentuk scroll agar seluruh data dapat ditelusuri "
+    "tanpa membatasi jumlah baris yang ditampilkan."
 )
-
-# --- Preview 5 data pertama ---
-st.subheader("Preview Data (5 Baris Pertama)")
-st.dataframe(data.head(), use_container_width=True)
-
-# --- Preview 5 data terakhir ---
-st.subheader("Preview Data (5 Baris Terakhir)")
-st.dataframe(data.tail(), use_container_width=True)
 
 # --- Dataset lengkap dengan scroll ---
 st.subheader("Dataset Lengkap")
@@ -386,6 +385,60 @@ st.markdown(
     pertanian. Keberadaan lonjakan ekstrem juga memperkuat indikasi adanya
     **outlier**, sehingga analisis lanjutan dan transformasi data menjadi relevan
     pada tahap selanjutnya.
+    """
+)
+
+st.divider()
+
+# =========================
+# 8. DATA YANG DIGUNAKAN
+# =========================
+st.header("8. Data yang Digunakan")
+st.caption(
+    "Bagian ini menampilkan dataset akhir yang digunakan dalam analisis lanjutan. "
+    "Dataset ini merupakan data asli tanpa menyertakan variabel hasil transformasi "
+    "logaritmik (ln). Transformasi log tetap tersedia pada data sumber, namun "
+    "tidak digunakan pada tahap analisis ini."
+)
+
+# Daftar kolom logaritmik yang dihapus
+ln_cols = [
+    "lnprod", "lnland", "lnlabor",
+    "lnN", "lnP", "lnK",
+    "lnpest", "lnfert"
+]
+
+# Dataset tanpa kolom ln
+data_used = data.drop(columns=ln_cols, errors="ignore")
+
+# Tampilkan dataset dengan scroll
+st.subheader("Dataset Tanpa Variabel Transformasi Logaritmik")
+st.dataframe(
+    data_used,
+    use_container_width=True,
+    height=350
+)
+
+# Ringkasan dataset yang digunakan
+col1, col2 = st.columns(2)
+with col1:
+    st.metric("Jumlah Baris", data_used.shape[0])
+with col2:
+    st.metric("Jumlah Kolom", data_used.shape[1])
+
+st.markdown(
+    """
+    **Penjelasan:**
+
+    Dataset yang digunakan pada tahap ini hanya mencakup **variabel asli**,
+    seperti produksi, luas lahan, tenaga kerja, penggunaan pupuk, dan pestisida.
+    Variabel transformasi logaritmik (**ln\***) **tidak disertakan dalam tabel ini**
+    meskipun tersedia pada data sumber.
+
+    Penghapusan kolom ln dilakukan untuk:
+    1. Menjaga **keterbacaan dan interpretasi data asli**
+    2. Memisahkan secara jelas antara **data mentah** dan **data hasil transformasi**
+    3. Memastikan konsistensi dataset sebelum tahap praproses dan pemodelan
     """
 )
 
